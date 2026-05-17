@@ -9,9 +9,7 @@ use rp_pico::entry;
 use rp_pico::hal::fugit::RateExtU32;
 use rp_pico::hal::{self, clocks::Clock, pac};
 
-//-------------------------
 // BNO055 Constants
-//-------------------------
 const BNO055_ADDR: u8 = 0x28;
 const CHIP_ID_REG: u8 = 0x00;
 const OPR_MODE_REG: u8 = 0x3D;
@@ -26,20 +24,14 @@ const EULER_REG: u8 = 0x1A; // 6 bytes: H_LSB, H_MSB, R_LSB, R_MSB, P_LSB, P_MSB
 const TEMP_REG: u8 = 0x34; // 1 byte, °C
 const CALIB_REG: u8 = 0x35; // 1 byte, calibration status
 
-//-------------------------
 // BNO055 Operating Modes
-//-------------------------
 const CONFIG_MODE: u8 = 0x00;
 const NDOF_MODE: u8 = 0x0C; // Full fusion — raw + euler + temp
 
-//-------------------------
 // Sampling
-//-------------------------
 const SAMPLE_PERIOD_US: u64 = 10_000; // 100Hz
 
-//-------------------------
 // UART Writer
-//-------------------------
 struct UartWriter<'a> {
     buf: &'a mut [u8],
     pos: usize,
@@ -72,21 +64,16 @@ macro_rules! uart_println {
     }};
 }
 
-//-------------------------
+
 // Helper: Two bytes → i16 (little endian)
-//-------------------------
 fn to_i16(low: u8, high: u8) -> i16 {
     i16::from_le_bytes([low, high])
 }
 
-//-------------------------
 // Entry Point
-//-------------------------
 #[entry]
 fn main() -> ! {
-    //-------------------------
     // Hardware Init
-    //-------------------------
     let mut pac = pac::Peripherals::take().unwrap();
     let core = pac::CorePeripherals::take().unwrap();
     let mut watchdog = hal::Watchdog::new(pac.WATCHDOG);
@@ -113,9 +100,7 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
-    //-------------------------
-    // I2C Init — GP4: SDA, GP5: SCL
-    //-------------------------
+    // I2C Init  GP4: SDA, GP5: SCL
     let sda_pin = pins
         .gpio4
         .reconfigure::<hal::gpio::FunctionI2C, hal::gpio::PullUp>();
@@ -132,9 +117,7 @@ fn main() -> ! {
         &clocks.system_clock,
     );
 
-    //-------------------------
-    // UART Init — GP0: TX, GP1: RX
-    //-------------------------
+    // UART Init  GP0: TX, GP1: RX
     let uart_pins = (
         pins.gpio0.into_function::<hal::gpio::FunctionUart>(),
         pins.gpio1.into_function::<hal::gpio::FunctionUart>(),
@@ -147,20 +130,16 @@ fn main() -> ! {
         )
         .unwrap();
 
-    //-------------------------
     // Timer Init
-    //-------------------------
     let timer = hal::Timer::new(pac.TIMER, &mut pac.RESETS, &clocks);
 
     let mut buf = [0u8; 128];
 
-    //-------------------------
     // BNO055 Init
-    //-------------------------
     uart_println!(uart, &mut buf, "Starting...\r\n");
     delay.delay_ms(800); // Boot time
 
-    // Chip ID check — must be 0xA0
+    // Chip ID check  must be 0xA0
     let mut chip_id = [0u8; 1];
     i2c.write_read(BNO055_ADDR, &[CHIP_ID_REG], &mut chip_id)
         .unwrap();
@@ -171,7 +150,7 @@ fn main() -> ! {
         .unwrap();
     delay.delay_ms(25);
 
-    // NDOF mode — full fusion, raw + euler + temp available
+    // NDOF mode  full fusion, raw + euler + temp available
     i2c.write(BNO055_ADDR, &[OPR_MODE_REG, NDOF_MODE]).unwrap();
     delay.delay_ms(800);
 
@@ -182,13 +161,11 @@ fn main() -> ! {
         "ts_us,ax,ay,az,gx,gy,gz,mx,my,mz,temp,roll,pitch,yaw,sys_cal,gyro_cal,acc_cal,mag_cal\r\n"
     );
 
-    //-------------------------
-    // Main Loop — 100Hz
-    //-------------------------
+    // Main Loop 100Hz
     loop {
         let start = timer.get_counter().ticks();
 
-        // Read Accelerometer (6 bytes) — 1 m/s² = 100 LSB
+        // Read Accelerometer (6 bytes)  1 m/s² = 100 LSB
         let mut accel = [0u8; 6];
         i2c.write_read(BNO055_ADDR, &[ACCEL_REG], &mut accel)
             .unwrap();
@@ -196,27 +173,27 @@ fn main() -> ! {
         let ay = to_i16(accel[2], accel[3]);
         let az = to_i16(accel[4], accel[5]);
 
-        // Read Gyroscope (6 bytes) — 1 °/s = 16 LSB
+        // Read Gyroscope (6 bytes)  1 °/s = 16 LSB
         let mut gyro = [0u8; 6];
         i2c.write_read(BNO055_ADDR, &[GYRO_REG], &mut gyro).unwrap();
         let gx = to_i16(gyro[0], gyro[1]);
         let gy = to_i16(gyro[2], gyro[3]);
         let gz = to_i16(gyro[4], gyro[5]);
 
-        // Read Magnetometer (6 bytes) — 1 µT = 16 LSB
+        // Read Magnetometer (6 bytes)  1 µT = 16 LSB
         let mut mag = [0u8; 6];
         i2c.write_read(BNO055_ADDR, &[MAG_REG], &mut mag).unwrap();
         let mx = to_i16(mag[0], mag[1]);
         let my = to_i16(mag[2], mag[3]);
         let mz = to_i16(mag[4], mag[5]);
 
-        // Read Temperature (1 byte) — °C
+        // Read Temperature (1 byte) °C
         let mut temp_buf = [0u8; 1];
         i2c.write_read(BNO055_ADDR, &[TEMP_REG], &mut temp_buf)
             .unwrap();
         let temp = temp_buf[0] as i8;
 
-        // Read Euler Angles (6 bytes) — 1° = 16 LSB
+        // Read Euler Angles (6 bytes) 1° = 16 LSB
         // Order: Heading(Yaw), Roll, Pitch
         let mut euler = [0u8; 6];
         i2c.write_read(BNO055_ADDR, &[EULER_REG], &mut euler)
