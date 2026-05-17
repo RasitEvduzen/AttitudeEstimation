@@ -18,13 +18,6 @@ rp-pico = "0.9"
 fugit = "0.3"
 
 
-# but you can use any BSP. Uncomment this to use the pro_micro_rp2040 BSP instead
-# sparkfun-pro-micro-rp2040 = "0.8"
-
-# If you're not going to use a Board Support Package you'll need these:
-# rp2040-hal = { version="0.10", features=["rt", "critical-section-impl"] }
-# rp2040-boot2 = "0.3"
-
 # cargo build/run
 [profile.dev]
 codegen-units = 1
