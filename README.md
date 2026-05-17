@@ -98,9 +98,6 @@ Pico H          BNO055
 GND (pin 38)    GND
 GP4 (pin 6)     SDA
 GP5 (pin 7)     SCL
-GND             PS0
-GND             PS1
-GND             ADR
 ```
 
 PS0, PS1, and ADR pulled to GND selects I2C mode at address 0x28.
