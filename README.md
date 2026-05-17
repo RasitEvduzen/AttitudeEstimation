@@ -4,7 +4,6 @@ This project implements a 9-DOF IMU data acquisition system using a Raspberry Pi
 
 The goal is to implement every attitude estimation algorithm from the AHRS library in MATLAB from scratch, and compare them against the BNO055 onboard fusion output.
 
-
 ## What You Need
 
 Raspberry Pi Pico H
@@ -16,7 +15,6 @@ USB to UART adapter (CH340G, FT232RL, or similar)
 Jumper wires and a breadboard
 
 A Windows, macOS, or Linux computer
-
 
 ## Rust Toolchain Setup
 
@@ -47,14 +45,12 @@ Install the UF2 converter for drag-and-drop flashing:
 cargo install elf2uf2-rs
 ```
 
-
 ## Getting the Code
 
 ```
 git clone https://github.com/your-username/pico-bno055.git
 cd pico-bno055
 ```
-
 
 ## Building
 
@@ -67,7 +63,6 @@ For a release build:
 ```
 cargo build --release
 ```
-
 
 ## Flashing the Pico
 
@@ -87,7 +82,6 @@ copy pico-bno055.uf2 E:\
 
 Replace E with the actual drive letter. The Pico will reboot and start running the firmware.
 
-
 ## Wiring
 
 Connect the BNO055 to the Pico H as shown below.
@@ -98,9 +92,6 @@ Pico H          BNO055
 GND (pin 38)    GND
 GP4 (pin 6)     SDA
 GP5 (pin 7)     SCL
-GND             PS0
-GND             PS1
-GND             ADR
 ```
 
 PS0, PS1, and ADR pulled to GND selects I2C mode at address 0x28.
@@ -116,7 +107,6 @@ GND             GND
 
 Do not connect the VCC pin of the UART adapter to the Pico. The Pico is powered through its own USB connection.
 
-
 ## Serial Output
 
 Open a serial terminal (Termite, PuTTY, or similar) at 115200 baud on the COM port assigned to your UART adapter. You will see output like this:
@@ -130,7 +120,6 @@ ts_us,ax,ay,az,gx,gy,gz,mx,my,mz,temp,roll,pitch,yaw,sys_cal,gyro_cal,acc_cal,ma
 
 The firmware outputs 18 comma-separated values at 100 Hz. The calibration columns at the end go from 0 (not calibrated) to 3 (fully calibrated). Move the sensor slowly in all orientations until all four values reach 3 before collecting data.
 
-
 ## Sensor Units
 
 ```
@@ -140,7 +129,6 @@ Magnetometer     microtesla     1 uT = 16 LSB
 Euler angles     degrees        1 degree = 16 LSB
 Temperature      Celsius        direct
 ```
-
 
 ## MATLAB Tools
 
@@ -152,24 +140,31 @@ Run bno055_logger.m to start real-time data logging. If bno055_calib.mat exists,
 
 The attitude estimation scripts in the filters folder implement each algorithm from scratch. Each filter reads from a logged CSV file and outputs Euler angles for comparison against the BNO055 onboard fusion.
 
-
 ## Project Structure
 
 ```
-pico-bno055/
+AttitudeEstimation/
     src/
-        main.rs         firmware source
-    Cargo.toml          project dependencies
+        main.rs               firmware source
+    Cargo.toml                project dependencies
+    Cargo.lock
+    build.rs                  linker script helper
+    memory.x                  Pico flash and RAM layout
+    bin/
+        pico-bno055.uf2       prebuilt binary, drag and drop to flash
     matlab/
-        bno055_calibration.m
-        bno055_logger.m
+        Logger.m              real-time data logger with live plot
+        Calibration.m         gyro, accel and mag calibration tool
         filters/
-            complementary.m
-            ekf.m
-            madgwick.m
-            ...
+            AttitudeComplementary.m
+            AttitudeEKF.m
+    docs/
+        raspberry-pi-pico-gpio.png
+        arduino_bno055axes.png
+        usb-ttl-340g.jpg
 ```
 
+If you do not want to build from source, copy bin/pico-bno055.uf2 directly to the Pico in BOOTSEL mode.
 
 ## Attitude Estimation Filters
 
@@ -198,7 +193,6 @@ AQUA                dynamic
 UKF                 dynamic
 Angular rate        dynamic
 ```
-
 
 ## License
 
