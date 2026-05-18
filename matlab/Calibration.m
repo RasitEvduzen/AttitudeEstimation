@@ -2,7 +2,6 @@ clear; clc; close all;
 % Written By: Rasit Evduzen
 % Date: 18-May-2026
 % BNO055 9DOF IMU Calibration
-
 %% Config
 PORT           = 'COM18';
 BAUD           = 115200;
@@ -16,16 +15,14 @@ configureTerminator(s, "CR/LF");
 s.InputBufferSize = 500000;
 readline(s); readline(s); readline(s);
 
-fprintf('\n========================================\n');
+fprintf('\n------------------------------\n');
 fprintf('       BNO055 Calibration Tool\n');
-fprintf('========================================\n\n');
-
+fprintf('------------------------------\n\n');
 % Storage
 gyro_raw = zeros(GYRO_SAMPLES, 3);
-mag_raw  = [];
 
 %% Gyro Calibration
-% Gyro Bias Estimation — Mathematical Formulation
+% Gyro Bias Estimation  Mathematical Formulation
 %
 % Gyroscope output model:
 %   w_meas = w_true + b + n
@@ -58,13 +55,14 @@ while idx < GYRO_SAMPLES
             vals = str2double(split(line, ','));
             if length(vals) ~= 18 || any(isnan(vals)); continue; end
             idx = idx + 1;
-            gyro_raw(idx,1) = -vals(5) / 16;   % X axis inverted | 1 °/s = 16 LSB
-            gyro_raw(idx,2) = -vals(6) / 16;   % Y axis inverted | 1 °/s = 16 LSB
-            gyro_raw(idx,3) = -vals(7) / 16;   % Z axis inverted | 1 °/s = 16 LSB
+            gyro_raw(idx,1) = vals(5) / 16;   % 1 °/s = 16 LSB
+            gyro_raw(idx,2) = vals(6) / 16;   % 1 °/s = 16 LSB
+            gyro_raw(idx,3) = vals(7) / 16;   % 1 °/s = 16 LSB
             if mod(idx, 100) == 0
                 fprintf('  %d / %d samples\n', idx, GYRO_SAMPLES);
             end
-        catch; end
+        catch;
+        end
     end
 end
 
@@ -73,7 +71,7 @@ fprintf('Gyro offset: GX=%.4f  GY=%.4f  GZ=%.4f deg/s\n\n', ...
     gyro_offset(1), gyro_offset(2), gyro_offset(3));
 
 %% Accel Calibration (LSE)
-% Accel LSE Calibration — Mathematical Formulation
+% Accel LSE Calibration  Mathematical Formulation
 %
 % Accelerometer output model:
 %   a_meas = W * a_true + b + n
@@ -85,12 +83,12 @@ fprintf('Gyro offset: GX=%.4f  GY=%.4f  GZ=%.4f deg/s\n\n', ...
 %     n      = zero-mean Gaussian noise
 %
 % For 6 static positions, gravity is the known reference:
-%   g_ref = [0,  0, -g]   (Z+ up)
-%           [0,  0, +g]   (Z- up)
-%           [-g, 0,  0]   (X+ up)
-%           [+g, 0,  0]   (X- up)
-%           [0, -g,  0]   (Y+ up)
-%           [0, +g,  0]   (Y- up)
+%   g_ref = [0,  0, +g]   (Z+ up  → az = +g)
+%           [0,  0, -g]   (Z- up  → az = -g)
+%           [+g, 0,  0]   (X+ up  → ax = +g)
+%           [-g, 0,  0]   (X- up  → ax = -g)
+%           [0, +g,  0]   (Y+ up  → ay = +g)
+%           [0, -g,  0]   (Y- up  → ay = -g)
 %
 % LSE problem (N=6 equations, 4 unknowns per axis):
 %   [a_means | ones] * [W; b] = g_ref
@@ -114,7 +112,7 @@ positions = {
     'X- UP   (sensor on right side)',
     'Y+ UP   (sensor on front edge)',
     'Y- UP   (sensor on back edge)'
-};
+    };
 
 accel_means = zeros(6, 3);
 
@@ -133,10 +131,11 @@ for pos = 1:6
                 vals = str2double(split(line, ','));
                 if length(vals) ~= 18 || any(isnan(vals)); continue; end
                 idx = idx + 1;
-                buf(idx,1) = -vals(2) / 100;   % X axis inverted | 1 m/s² = 100 LSB
-                buf(idx,2) = -vals(3) / 100;   % Y axis inverted | 1 m/s² = 100 LSB
-                buf(idx,3) = -vals(4) / 100;   % Z axis inverted | 1 m/s² = 100 LSB
-            catch; end
+                buf(idx,1) = vals(2) / 100;   % 1 m/s² = 100 LSB
+                buf(idx,2) = vals(3) / 100;   % 1 m/s² = 100 LSB
+                buf(idx,3) = vals(4) / 100;   % 1 m/s² = 100 LSB
+            catch;
+            end
         end
     end
 
@@ -145,23 +144,23 @@ for pos = 1:6
         accel_means(pos,1), accel_means(pos,2), accel_means(pos,3));
 end
 
-% Known gravity reference — NED convention (Z down)
+% Known gravity reference  Z up convention
 g = 9.81;
 g_ref = [
-     0,    0,   -g;   % Z+ up  → az = -g
-     0,    0,    g;   % Z- up  → az = +g
-    -g,    0,    0;   % X+ up  → ax = -g
-     g,    0,    0;   % X- up  → ax = +g
-     0,   -g,    0;   % Y+ up  → ay = -g
-     0,    g,    0;   % Y- up  → ay = +g
-];
+    0,    0,   +g;   % Z+ up  → az = +g
+    0,    0,   -g;   % Z- up  → az = -g
+    +g,    0,    0;   % X+ up  → ax = +g
+    -g,    0,    0;   % X- up  → ax = -g
+    0,   +g,    0;   % Y+ up  → ay = +g
+    0,   -g,    0;   % Y- up  → ay = -g
+    ];
 
 % LSE solution
 A_lse  = [accel_means, ones(6,1)];
 params = A_lse \ g_ref;
 
-accel_W      = params(1:3,:);
-accel_offset = params(4,:);
+accel_W         = params(1:3,:);
+accel_offset    = params(4,:);
 accel_cal_means = accel_means * accel_W + accel_offset;
 
 fprintf('Accel offset: AX=%.4f  AY=%.4f  AZ=%.4f\n', ...
@@ -170,7 +169,7 @@ fprintf('Accel W matrix:\n');
 disp(accel_W);
 
 %% Mag Calibration (LSE ellipsoid)
-% LSE Ellipsoid Fitting — Mathematical Formulation
+% LSE Ellipsoid Fitting  Mathematical Formulation
 %
 % Ideal magnetometer output lies on a sphere:
 %   (mx - ox)^2 + (my - oy)^2 + (mz - oz)^2 = r^2
@@ -206,7 +205,7 @@ disp(accel_W);
 
 fprintf('---  3: Mag Calibration ---\n');
 fprintf('Rotate sensor slowly in ALL directions for %d seconds.\n', MAG_DURATION);
-fprintf('Cover all orientations — figure-8, tumble, rotate.\n');
+fprintf('Cover all orientations  figure-8, tumble, rotate.\n');
 fprintf('Press Enter to start...\n');
 pause;
 
@@ -219,13 +218,13 @@ while toc(t_start) < MAG_DURATION
             line = readline(s);
             vals = str2double(split(line, ','));
             if length(vals) ~= 18 || any(isnan(vals)); continue; end
-            mag_raw(end+1,:) = [-vals(8)/16, -vals(9)/16, -vals(10)/16]; %#ok
-            % X Y Z axis inverted | 1 µT = 16 LSB
+            mag_raw(end+1,:) = [vals(8)/16, vals(9)/16, vals(10)/16];   % 1 µT = 16 LSB
             remaining = MAG_DURATION - toc(t_start);
             if mod(size(mag_raw,1), 50) == 0
                 fprintf('  %d samples | %.1f s remaining\n', size(mag_raw,1), remaining);
             end
-        catch; end
+        catch;
+        end
     end
 end
 
@@ -239,8 +238,8 @@ b_vec = ones(size(mx));
 params = A \ b_vec;
 
 M = [params(1), params(4), params(5);
-     params(4), params(2), params(6);
-     params(5), params(6), params(3)];
+    params(4), params(2), params(6);
+    params(5), params(6), params(3)];
 n_vec = [params(7); params(8); params(9)];
 
 mag_offset  = -(M \ n_vec);
@@ -272,7 +271,7 @@ pos_labels = {'Z+','Z-','X+','X-','Y+','Y-'};
 
 %--- Figure 1: Gyro ---
 figure('Name','Gyro Calibration','NumberTitle','off', ...
-       'Position',[0 0 1920 1080],'Color','w');
+    'Position',[0 0 1920 1080],'Color','w');
 
 for i = 1:3
     subplot(3,1,i);
@@ -282,20 +281,20 @@ for i = 1:3
     title(sprintf('Gyro %s  Raw + Offset', channels{i}));
     ylabel('deg/s'); xlabel('Sample'); grid on;
     legend('Raw', sprintf('Offset = %.4f', gyro_offset(i)), ...
-           'Location','northeast','FontSize',7);
+        'Location','northeast','FontSize',7);
 end
 sgtitle('Gyro Calibration');
 
 %--- Figure 2: Accel ---
 figure('Name','Accel Calibration','NumberTitle','off', ...
-       'Position',[0 0 1920 1080],'Color','w');
+    'Position',[0 0 1920 1080],'Color','w');
 
 for i = 1:3
     subplot(3,1,i);
-    plot(1:6, accel_means(:,i),     colors{i},          'LineWidth', 2, ...
-         'DisplayName','Raw'); hold on;
-    plot(1:6, accel_cal_means(:,i), [colors{i} '--'],   'LineWidth', 1.5, ...
-         'DisplayName','Calibrated');
+    plot(1:6, accel_means(:,i),     colors{i},        'LineWidth', 2, ...
+        'DisplayName','Raw'); hold on;
+    plot(1:6, accel_cal_means(:,i), [colors{i} '--'], 'LineWidth', 1.5, ...
+        'DisplayName','Calibrated');
     yline( g, 'k--', 'LineWidth', 1, 'HandleVisibility','off');
     yline(-g, 'k--', 'LineWidth', 1, 'HandleVisibility','off');
     yline( 0, 'k:',  'LineWidth', 1, 'HandleVisibility','off');
@@ -312,7 +311,7 @@ mag_cal = (mag_raw - mag_offset') * soft_iron_W;
 mx_c = mag_cal(:,1); my_c = mag_cal(:,2); mz_c = mag_cal(:,3);
 
 figure('Name','Mag Calibration','NumberTitle','off', ...
-       'Position',[0 0 1920 1080],'Color','w');
+    'Position',[0 0 1920 1080],'Color','w');
 
 mag_raw_ch = {mx,   my,   mz  };
 mag_cal_ch = {mx_c, my_c, mz_c};
@@ -320,9 +319,9 @@ mag_cal_ch = {mx_c, my_c, mz_c};
 for i = 1:3
     subplot(3,1,i);
     plot(mag_raw_ch{i}, colors{i}, 'LineWidth', 2, ...
-         'DisplayName', sprintf('Raw M%s',  channels{i})); hold on;
+        'DisplayName', sprintf('Raw M%s',  channels{i})); hold on;
     plot(mag_cal_ch{i}, 'k--',     'LineWidth', 2, ...
-         'DisplayName', sprintf('Cal M%s',  channels{i})); hold off;
+        'DisplayName', sprintf('Cal M%s',  channels{i})); hold off;
     title(sprintf('Mag %s', channels{i}));
     ylabel('uT'); xlabel('Sample'); grid on;
     legend('Location','northeast','FontSize',7);
@@ -331,7 +330,7 @@ sgtitle('Mag Calibration  Raw vs Calibrated');
 
 %--- Figure 4: Mag 3D sphere ---
 figure('Name','Mag 3D Sphere','NumberTitle','off', ...
-       'Position',[0 0 1920 1080],'Color','w');
+    'Position',[0 0 1920 1080],'Color','w');
 
 [cx_r, cy_r, cz_r, r_r] = fit_sphere(mx,   my,   mz  );
 [cx_c, cy_c, cz_c, r_c] = fit_sphere(mx_c, my_c, mz_c);
@@ -356,9 +355,9 @@ fprintf('Done!\n');
 
 %% Functions
 function [cx, cy, cz, r] = fit_sphere(x, y, z)
-    A      = [2*x, 2*y, 2*z, ones(size(x))];
-    b      = x.^2 + y.^2 + z.^2;
-    params = A \ b;
-    cx = params(1); cy = params(2); cz = params(3);
-    r  = sqrt(params(4) + cx^2 + cy^2 + cz^2);
+A      = [2*x, 2*y, 2*z, ones(size(x))];
+b      = x.^2 + y.^2 + z.^2;
+params = A \ b;
+cx = params(1); cy = params(2); cz = params(3);
+r  = sqrt(params(4) + cx^2 + cy^2 + cz^2);
 end

@@ -17,7 +17,7 @@ frame_len    = 10;
 s = serialport(PORT, BAUD);
 configureTerminator(s, "CR/LF");
 s.InputBufferSize = 500000;
-readline(s); % Starting...
+readline(s); % Starting
 readline(s); % Chip ID
 readline(s); % CSV header
 
@@ -46,9 +46,7 @@ sys_cal = 0; gyro_cal = 0; acc_cal = 0; mag_cal = 0;
 
 
 %% Figure
-
-figure('Name','BNO055 Data Logger','NumberTitle','off', ...
-    'Position',[50 50 1400 800],'Color','w');
+figure('Name','BNO055 Data Logger','NumberTitle','off', 'Position',[0 0 1920 1080],'Color','w');
 
 % Left  3D Attitude (BNO055 fusion)
 sp_att = subplot(4,2,[1,3,5,7]);
@@ -107,20 +105,20 @@ try
 
                 % Parse and scale
                 ts       = vals(1);
-                ax       = -vals(2)  / 100;   % X axis inverted | 1 m/s² = 100 LSB
-                ay       = -vals(3)  / 100;   % Y axis inverted | 1 m/s² = 100 LSB
-                az       = -vals(4)  / 100;   % Z axis inverted | 1 m/s² = 100 LSB
-                gx       = -vals(5)  / 16;    % X axis inverted | 1 °/s = 16 LSB
-                gy       = -vals(6)  / 16;    % Y axis inverted | 1 °/s = 16 LSB
-                gz       = -vals(7)  / 16;    % Z axis inverted | 1 °/s = 16 LSB
-                mx       = -vals(8)  / 16;    % X axis inverted | 1 µT = 16 LSB
-                my       = -vals(9)  / 16;    % Y axis inverted | 1 µT = 16 LSB
-                mz       = -vals(10) / 16;    % Z axis inverted | 1 µT = 16 LSB
-                temp     = vals(11);          % Temperature in °C
-                roll     = vals(12) / 16;     % 1° = 16 LSB
-                pitch    = vals(13) / 16;     % 1° = 16 LSB
-                yaw      = vals(14) / 16;     % 1° = 16 LSB
-                sys_cal  = vals(15);          % 0-3, 3 = fully calibrated
+                ax       = vals(2)  / 100;   % 1 m/s² = 100 LSB
+                ay       = vals(3)  / 100;   % 1 m/s² = 100 LSB
+                az       = vals(4)  / 100;   % 1 m/s² = 100 LSB
+                gx       = vals(5)  / 16;    % 1 °/s = 16 LSB
+                gy       = vals(6)  / 16;    % 1 °/s = 16 LSB
+                gz       = vals(7)  / 16;    % 1 °/s = 16 LSB
+                mx       = vals(8)  / 16;    % 1 µT = 16 LSB
+                my       = vals(9)  / 16;    % 1 µT = 16 LSB
+                mz       = vals(10) / 16;    % 1 µT = 16 LSB
+                temp     = vals(11);         % Temperature in °C
+                roll     = vals(12) / 16;    % 1° = 16 LSB
+                pitch    = vals(13) / 16;    % 1° = 16 LSB
+                yaw      = vals(14) / 16;    % 1° = 16 LSB
+                sys_cal  = vals(15);         % 0-3, 3 = fully calibrated
                 gyro_cal = vals(16);
                 acc_cal  = vals(17);
                 mag_cal  = vals(18);
